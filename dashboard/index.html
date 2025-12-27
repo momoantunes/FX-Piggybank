@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>USD Piggybank</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 24px; }
+      .row { display: flex; gap: 16px; flex-wrap: wrap; }
+      .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px 16px; min-width: 260px; }
+      h1 { margin: 0 0 8px; font-size: 22px; }
+      .muted { color: #6b7280; font-size: 13px; }
+      .big { font-size: 28px; margin: 6px 0; }
+      canvas { width: 100%; max-width: 980px; height: 320px; border: 1px solid #e5e7eb; border-radius: 12px; }
+      a { color: inherit; }
+      code { background: #f3f4f6; padding: 2px 6px; border-radius: 6px; }
+    </style>
+  </head>
+  <body>
+    <h1>USD Piggybank</h1>
+    <div class="muted">
+      Dados do histórico: <code>/data/usdbrl.json</code> • Atualizado automaticamente 2x/dia
+    </div>
+
+    <div class="row" style="margin-top:16px;">
+      <div class="card">
+        <div class="muted">Última cotação (bid)</div>
+        <div id="lastBid" class="big">—</div>
+        <div id="lastMeta" class="muted">—</div>
+      </div>
+
+      <div class="card">
+        <div class="muted">Variação vs anterior</div>
+        <div id="delta" class="big">—</div>
+        <div id="deltaMeta" class="muted">—</div>
+      </div>
+
+      <div class="card">
+        <div class="muted">Fonte</div>
+        <div id="source" class="big">—</div>
+        <div class="muted">Se cair em PTAX, é fallback resiliente.</div>
+      </div>
+    </div>
+
+    <div style="margin-top:18px;">
+      <div class="muted" style="margin-bottom:8px;">Últimos pontos (linha simples)</div>
+      <canvas id="chart" width="980" height="320"></canvas>
+      <div id="chartMeta" class="muted" style="margin-top:8px;">—</div>
+    </div>
+
+    <p class="muted" style="margin-top:16px;">
+      Repo: <a id="repoLink" href="#" target="_blank" rel="noreferrer">abrir no GitHub</a>
+    </p>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
