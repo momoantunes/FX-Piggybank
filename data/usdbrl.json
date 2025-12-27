@@ -1,1 +1,13 @@
-[]
+[
+  {
+    "pair": "USD/BRL",
+    "bid": 5.5413,
+    "ask": null,
+    "timestamp_iso": "2025-12-27T01:22:05.715882+00:00",
+    "source": "BCB PTAX",
+    "raw": {
+      "dataHoraCotacao": "2025-12-26 13:07:27.597",
+      "cotacaoCompra": 5.5407
+    }
+  }
+]
