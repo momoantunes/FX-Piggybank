@@ -146,4 +146,7 @@ It was built as a **real personal tool**, not a toy example.
 
 ---
 
+Built by: Mônica (Engineering) & Hugo (Design)
+
+---
 Feel free to fork, adapt, or use this project as inspiration.
