@@ -1,0 +1,46 @@
+name: USD Piggybank - 2x/day
+
+on:
+  schedule:
+    # 10:00 e 17:00 no horário de São Paulo (BRT = UTC-3)
+    # GitHub Actions cron usa UTC.
+    # 10:00 BRT = 13:00 UTC
+    # 17:00 BRT = 20:00 UTC
+    - cron: "0 13 * * *"
+    - cron: "0 20 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run checker
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          python src/main.py
+
+      - name: Commit updated history
+        run: |
+          git config user.name "usd-piggybank-bot"
+          git config user.email "usd-piggybank-bot@users.noreply.github.com"
+          git add data/usdbrl.json
+          git diff --cached --quiet || git commit -m "chore: update USD/BRL history"
+          git push
