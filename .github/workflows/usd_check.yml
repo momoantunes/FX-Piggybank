@@ -41,6 +41,7 @@ jobs:
         run: |
           python -u src/main.py
 
+
       - name: Commit updated history
         run: |
           git config user.name "usd-piggybank-bot"

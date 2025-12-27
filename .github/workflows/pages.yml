@@ -1,8 +1,10 @@
 name: Deploy Dashboard to GitHub Pages
 
 on:
-  push:
-    branches: ["main"]
+  workflow_run:
+    workflows: ["USD Piggybank - 2x/day"]  # precisa bater com o "name:" do teu usd_check.yml
+    types:
+      - completed
   workflow_dispatch: {}
 
 permissions:
@@ -16,7 +18,10 @@ concurrency:
 
 jobs:
   deploy:
+    # Só faz deploy se o workflow do dólar terminou OK
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,5 +42,4 @@ jobs:
           path: site
 
       - name: Deploy
-        id: deployment
         uses: actions/deploy-pages@v4

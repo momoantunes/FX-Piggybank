@@ -1,5 +1,5 @@
 async function loadHistory() {
-  const res = await fetch("../data/usdbrl.json", { cache: "no-store" });
+  const res = await fetch("./data/usdbrl.json", { cache: "no-store" });
   if (!res.ok) throw new Error(`Falha ao carregar histórico: ${res.status}`);
   return await res.json();
 }
