@@ -34,7 +34,7 @@ jobs:
       - name: Run checker
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          BUY_BELOW: ${{ vars.BUY_BELOW }}
+          BUY_BELOW: ${{ vars.BUY_BELOW_USD }}
           ALERT_DROP_PCT: ${{ vars.ALERT_DROP_PCT }}
           ALERT_RISE_PCT: ${{ vars.ALERT_RISE_PCT }}
           ALWAYS_NOTIFY: ${{ vars.ALWAYS_NOTIFY }}
@@ -46,6 +46,6 @@ jobs:
         run: |
           git config user.name "usd-piggybank-bot"
           git config user.email "usd-piggybank-bot@users.noreply.github.com"
-          git add data/usdbrl.json
+          git add data/*.json
           git diff --cached --quiet || git commit -m "chore: update USD/BRL history"
           git push

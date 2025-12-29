@@ -1,106 +1,142 @@
 import time
 import requests
 from datetime import datetime, timezone, date
+from urllib.parse import quote as urlquote
 
 
 def _get_json_with_retries(url: str, timeout: int = 20, retries: int = 4) -> dict:
-    """
-    GET com retries e backoff exponencial.
-    - Se der 429 ou 5xx, tenta de novo.
-    - Se der 4xx (exceto 429), falha direto.
-    """
     last_exc = None
     for attempt in range(retries + 1):
         try:
-            resp = requests.get(url, timeout=timeout, headers={"User-Agent": "usd-piggybank/1.0"})
+            resp = requests.get(url, timeout=timeout, headers={"User-Agent": "fx-piggybank/1.0"})
             if resp.status_code == 429 or 500 <= resp.status_code <= 599:
-                # backoff: 1s, 2s, 4s, 8s...
-                wait = 2 ** attempt
-                time.sleep(wait)
+                time.sleep(2 ** attempt)
                 continue
-
             resp.raise_for_status()
             return resp.json()
-
         except Exception as exc:
             last_exc = exc
-            # backoff também em exceções de rede
-            wait = 2 ** attempt
-            time.sleep(wait)
-
+            time.sleep(2 ** attempt)
     raise RuntimeError(f"Falha ao buscar dados após retries. Último erro: {last_exc}")
 
 
-def fetch_usd_brl() -> dict:
+def _fetch_awesome(base: str, quote: str) -> dict:
+    # ex: EUR-BRL
+    pair = f"{base}-{quote}"
+    url = f"https://economia.awesomeapi.com.br/json/last/{pair}"
+    data = _get_json_with_retries(url, retries=2)
+
+    # A API retorna chave "USDBRL", "EURBRL", etc.
+    key = f"{base}{quote}".upper()
+    payload = data.get(key)
+    if not payload:
+        raise RuntimeError(f"Resposta inesperada da AwesomeAPI (campo {key} não encontrado).")
+
+    bid = float(payload["bid"])
+    ask = float(payload["ask"]) if payload.get("ask") else None
+
+    return {
+        "bid": bid,
+        "ask": ask,
+        "source": "AwesomeAPI",
+        "raw": {
+            "create_date": payload.get("create_date"),
+            "high": payload.get("high"),
+            "low": payload.get("low"),
+        },
+    }
+
+
+def _fetch_bcb_ptax(base: str, quote: str) -> dict:
     """
-    Tenta AwesomeAPI primeiro; se falhar (ex: 429), cai pro PTAX (Banco Central).
-    Retorna um dict padronizado.
+    Fallback oficial: BCB PTAX via Olinda OData.
+    Para moedas diferentes de USD, usa CotacaoMoedaDia(moeda=@moeda,dataCotacao=@dataCotacao)
+    (o próprio BCB dá exemplo com EUR). :contentReference[oaicite:2]{index=2}
     """
-    now_utc = datetime.now(timezone.utc).isoformat()
+    if quote.upper() != "BRL":
+        raise RuntimeError("Fallback BCB PTAX implementado apenas para *-BRL neste projeto.")
 
-    # 1) AwesomeAPI (pode dar 429)
-    awesome_url = "https://economia.awesomeapi.com.br/json/last/USD-BRL"
-    try:
-        data = _get_json_with_retries(awesome_url, retries=2)
-        usdbrl = data.get("USDBRL")
-        if not usdbrl:
-            raise RuntimeError("Resposta inesperada da AwesomeAPI (USDBRL ausente).")
+    today = date.today().strftime("%m-%d-%Y")
+    moeda = base.upper()
 
-        bid = float(usdbrl["bid"])
-        ask = float(usdbrl["ask"]) if usdbrl.get("ask") else None
+    # Exemplo do BCB (EUR): CotacaoMoedaDia(moeda=@moeda,dataCotacao=@dataCotacao)?@moeda='EUR'&@dataCotacao='01-31-2017'&$format=json
+    # :contentReference[oaicite:3]{index=3}
+    ptax_url = (
+        "https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/"
+        "CotacaoMoedaDia(moeda=@moeda,dataCotacao=@dataCotacao)?"
+        f"%40moeda='{urlquote(moeda)}'&%40dataCotacao='{urlquote(today)}'&$format=json"
+    )
 
-        return {
-            "pair": "USD/BRL",
-            "bid": bid,
-            "ask": ask,
-            "timestamp_iso": now_utc,
-            "source": "AwesomeAPI",
-            "raw": {"create_date": usdbrl.get("create_date"), "high": usdbrl.get("high"), "low": usdbrl.get("low")},
-        }
-    except Exception:
-        # 2) Fallback: PTAX (Banco Central)
-        # Endpoint OData do BCB. A forma mais simples: pegar o último valor disponível para o dia.
-        # Usamos a data de hoje (UTC) mas PTAX é BR; em fins de semana pode não ter -> pega o último disponível via orderby desc/top 1.
-        today = date.today().strftime("%m-%d-%Y")
+    ptax_data = _get_json_with_retries(ptax_url, retries=4)
+    values = ptax_data.get("value", [])
+    if not values:
+        # Em fins de semana/feriado pode vir vazio. Aí tentamos 7 dias pra trás e pegamos o último.
+        from datetime import timedelta
 
-        # Pega o último registro disponível (mais recente), sem ficar dependente do dia ter cotação.
-        # cotacaoVenda ~ bid (aproximação pra nosso uso)
-        ptax_url = (
+        start = (date.today() - timedelta(days=7)).strftime("%m-%d-%Y")
+        end = date.today().strftime("%m-%d-%Y")
+
+        ptax_range_url = (
             "https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/"
-            "CotacaoDolarDia(dataCotacao=@dataCotacao)?@dataCotacao="
-            f"'{today}'&$format=json"
+            "CotacaoMoedaPeriodo(moeda=@moeda,dataInicial=@dataInicial,dataFinalCotacao=@dataFinalCotacao)?"
+            f"%40moeda='{urlquote(moeda)}'&%40dataInicial='{urlquote(start)}'&%40dataFinalCotacao='{urlquote(end)}'"
+            "&$format=json"
         )
 
-        ptax_data = _get_json_with_retries(ptax_url, retries=4)
-        values = ptax_data.get("value", [])
+        rng = _get_json_with_retries(ptax_range_url, retries=4)
+        values = rng.get("value", [])
         if not values:
-            # Se não houver no dia (fim de semana/feriado), tenta “última cotação disponível” via series diárias (fallback extra)
-            # Aqui fazemos uma busca de uma janela curta (7 dias) e pegamos o último.
-            # (mantém robusto sem complicar demais)
-            from datetime import timedelta
+            raise RuntimeError("PTAX sem valores retornados (nem hoje, nem na última semana).")
 
-            start = (date.today() - timedelta(days=7)).strftime("%m-%d-%Y")
-            end = date.today().strftime("%m-%d-%Y")
+    last = values[-1]
+    bid = float(last["cotacaoVenda"])
+    ask = None  # PTAX já é referência; mantemos ask None
 
-            ptax_range_url = (
-                "https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/"
-                "CotacaoDolarPeriodo(dataInicial=@dataInicial,dataFinalCotacao=@dataFinalCotacao)?"
-                f"@dataInicial='{start}'&@dataFinalCotacao='{end}'&$format=json"
-            )
+    return {
+        "bid": bid,
+        "ask": ask,
+        "source": "BCB PTAX",
+        "raw": {
+            "dataHoraCotacao": last.get("dataHoraCotacao"),
+            "cotacaoCompra": last.get("cotacaoCompra"),
+            "tipoBoletim": last.get("tipoBoletim"),
+        },
+    }
 
-            rng = _get_json_with_retries(ptax_range_url, retries=4)
-            values = rng.get("value", [])
-            if not values:
-                raise RuntimeError("PTAX sem valores retornados (nem hoje, nem na última semana).")
 
-        last = values[-1]
-        bid = float(last["cotacaoVenda"])
+def fetch_quote(base: str, quote: str) -> dict:
+    """
+    Retorna um dict padronizado para o par base/quote:
+    - pair
+    - bid
+    - ask
+    - timestamp_iso (UTC)
+    - source
+    - raw (metadados)
+    """
+    now_utc = datetime.now(timezone.utc).isoformat()
+    base = base.upper()
+    quote = quote.upper()
 
+    # 1) Tenta spot (AwesomeAPI)
+    try:
+        got = _fetch_awesome(base, quote)
         return {
-            "pair": "USD/BRL",
-            "bid": bid,
-            "ask": None,
+            "pair": f"{base}/{quote}",
+            "bid": got["bid"],
+            "ask": got["ask"],
             "timestamp_iso": now_utc,
-            "source": "BCB PTAX",
-            "raw": {"dataHoraCotacao": last.get("dataHoraCotacao"), "cotacaoCompra": last.get("cotacaoCompra")},
+            "source": got["source"],
+            "raw": got["raw"],
+        }
+    except Exception:
+        # 2) Fallback oficial (BCB PTAX)
+        got = _fetch_bcb_ptax(base, quote)
+        return {
+            "pair": f"{base}/{quote}",
+            "bid": got["bid"],
+            "ask": got["ask"],
+            "timestamp_iso": now_utc,
+            "source": got["source"],
+            "raw": got["raw"],
         }
