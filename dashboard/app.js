@@ -35,9 +35,18 @@ function drawLineChart(canvas, points) {
   const W = canvas.width, H = canvas.height;
   const ys = points.map(p => p.bid);
 
-  const minY = Math.min(...ys);
-  const maxY = Math.max(...ys);
-  const rangeY = (maxY - minY) || 1;
+let minY = Math.min(...ys);
+let maxY = Math.max(...ys);
+
+// Se todos os pontos forem iguais, cria margem artificial
+if (minY === maxY) {
+  const pad = minY * 0.002; // 0.2%
+  minY -= pad;
+  maxY += pad;
+}
+
+const rangeY = maxY - minY;
+
 
   const xTo = (i) => pad + (i / (ys.length - 1)) * (W - pad * 2);
   const yTo = (v) => (H - pad) - ((v - minY) / rangeY) * (H - pad * 2);
