@@ -994,5 +994,17 @@
       "cotacaoCompra": 6.1855,
       "tipoBoletim": "Fechamento"
     }
+  },
+  {
+    "pair": "EUR/BRL",
+    "bid": 6.1867,
+    "ask": null,
+    "timestamp_iso": "2026-02-08T20:35:46.083565+00:00",
+    "source": "BCB PTAX",
+    "raw": {
+      "dataHoraCotacao": "2026-02-06 13:10:27.461",
+      "cotacaoCompra": 6.1855,
+      "tipoBoletim": "Fechamento"
+    }
   }
 ]
