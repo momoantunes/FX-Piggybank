@@ -1778,5 +1778,17 @@
       "cotacaoCompra": 5.2133,
       "tipoBoletim": "Fechamento PTAX"
     }
+  },
+  {
+    "pair": "USD/BRL",
+    "bid": 5.1697,
+    "ask": null,
+    "timestamp_iso": "2026-03-10T14:01:03.533256+00:00",
+    "source": "BCB PTAX",
+    "raw": {
+      "dataHoraCotacao": "2026-03-10 10:08:26.197",
+      "cotacaoCompra": 5.1691,
+      "tipoBoletim": "Abertura"
+    }
   }
 ]
