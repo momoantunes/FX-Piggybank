@@ -157,7 +157,7 @@ It was built as a **real personal tool**, not a toy example.
 ## Team
 
 - Mônica — Architecture, automation, backend logic
-- Hugo — UI/UX design, visual identity, dashboard layout
+- Giovanna — UI/UX design, visual identity, dashboard layout
 
 ---
 Feel free to fork, adapt, or use this project as inspiration.
