@@ -4942,5 +4942,17 @@
       "cotacaoCompra": 5.8044,
       "tipoBoletim": "Intermediário"
     }
+  },
+  {
+    "pair": "EUR/BRL",
+    "bid": 5.8023,
+    "ask": null,
+    "timestamp_iso": "2026-07-27T21:16:14.869773+00:00",
+    "source": "BCB PTAX",
+    "raw": {
+      "dataHoraCotacao": "2026-07-27 13:05:18.508262",
+      "cotacaoCompra": 5.8005,
+      "tipoBoletim": "Fechamento PTAX"
+    }
   }
 ]
